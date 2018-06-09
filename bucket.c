@@ -42,7 +42,7 @@ void populateBuckets(int ***buckets, int num, int range){
 	int i, j, **temp = *buckets;
 	for(i=0; i < num; i++){
 		for(j=0;j<10;j++){
-			temp[i][j] = 0;
+			temp[i][j] = rand()%range;
 		}
 	}
 	*buckets= temp;
