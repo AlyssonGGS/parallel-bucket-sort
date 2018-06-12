@@ -22,7 +22,8 @@ int main(int argc, char *argv[]){
 		MPI_Finalize();
 		return 1;
 	}
-	MPI_Comm_size(MPI_COMM_WORLD,&size);
+	int size;
+	MPI_Comm_size(MPI_COMM_WORLD, &size);
 	
 	int numBuckets;
 	sscanf(argv[1], "%d", &numBuckets);
@@ -51,9 +52,9 @@ int main(int argc, char *argv[]){
 	MPI_Comm_rank(MPI_COMM_WORLD, &myrank);
 	
 	if(myrank != 0){
-		worker();
+		worker(myrank);
 	} else{
-		master();
+		master(&buckets, myrank);
 	}
 	
 	//Ordena
@@ -79,14 +80,14 @@ void master(int ***buckets, int num){
 	int i;
 	MPI_Request request;
 	for(i=1; i<num; i++){
-		MPI_Isend(*buckets[i], *buckets[i][0], MPI_INT, i, i, MPI_COMM_WORLD, *request);
+		MPI_Isend(*buckets[i], *buckets[i][0], MPI_INT, i, i, MPI_COMM_WORLD, &request);
 	}
 }
 
 void worker(int rank){
-	int []bucket;
+	int *bucket, num;
 	MPI_Status status;
-	MPI_Recv(&bucket, num, MPI_INT, 0, rank, &status);
+	MPI_Recv(&bucket, num, MPI_INT, 0, rank, MPI_COMM_WORLD, &status);
 }
 
 void createBuckets(int ***buckets, int num){
