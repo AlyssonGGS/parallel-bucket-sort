@@ -23,7 +23,11 @@ int main(int argc, char *argv[]){
 		//MPI_Finalize();
 		return 1;
 	}
+<<<<<<< HEAD
 	//MPI_Comm_size(MPI_COMM_WORLD,&size);
+=======
+	MPI_Comm_size(MPI_COMM_WORLD,&size);
+>>>>>>> parent of 875f784... Consertando erros de compilacao para mpicc
 	
 	int numBuckets;
 	sscanf(argv[1], "%d", &numBuckets);
@@ -51,11 +55,19 @@ int main(int argc, char *argv[]){
 	int myrank;
 	//MPI_Comm_rank(MPI_COMM_WORLD, &myrank);
 	
+<<<<<<< HEAD
 	/*if(myrank != 0){
 		worker();
 	} else{
 		master();
 	}*/
+=======
+	if(myrank != 0){
+		worker();
+	} else{
+		master();
+	}
+>>>>>>> parent of 875f784... Consertando erros de compilacao para mpicc
 	
 	//Ordena
 	sort(&buckets, numBuckets);
@@ -80,14 +92,24 @@ void master(int ***buckets, int num){
 	int i;
 //	MPI_Request request;
 	for(i=1; i<num; i++){
+<<<<<<< HEAD
 //		MPI_Isend(*buckets[i], *buckets[i][0], MPI_INT, i, i, MPI_COMM_WORLD, *request);
+=======
+		MPI_Isend(*buckets[i], *buckets[i][0], MPI_INT, i, i, MPI_COMM_WORLD, *request);
+>>>>>>> parent of 875f784... Consertando erros de compilacao para mpicc
 	}
 }
 
 void worker(int rank){
+<<<<<<< HEAD
 	//int []bucket;
 //	MPI_Status status;
 //	MPI_Recv(&bucket, num, MPI_INT, 0, rank, &status);
+=======
+	int []bucket;
+	MPI_Status status;
+	MPI_Recv(&bucket, num, MPI_INT, 0, rank, &status);
+>>>>>>> parent of 875f784... Consertando erros de compilacao para mpicc
 }
 
 void createBuckets(int ***buckets, int num){
