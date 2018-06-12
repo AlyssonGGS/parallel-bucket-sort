@@ -11,12 +11,18 @@ void sort(int ***buckets, int num);
 int* mergeBuckets(int **buckets, int num, int valuesSize);
 void cleanBuckets(int **buckets, int num);
 
+void master(int ***buckets, int num);
+void worker(int ***buckets, int num, int rank);
+
 int main(int argc, char *argv[]){
+	MPI_Init(&argc,&argv);
 	if(argc < 4){
 		printf("Numero de argumentos insuficiente\n");
+		MPI_Finalize();
 		return 1;
 	}
-
+	MPI_Comm_size(MPI_COMM_WORLD,&size);
+	
 	int numBuckets;
 	sscanf(argv[1], "%d", &numBuckets);
 
@@ -39,11 +45,20 @@ int main(int argc, char *argv[]){
 	populateBuckets(&buckets, numBuckets, values, valuesSize);
 	printBuckets(buckets, numBuckets);
 
+	//Define o ranking para distribuir os buckets
+	int myrank;
+	MPI_Comm_rank(MPI_COMM_WORLD, &myrank);
+	
+	if(myrank != 0){
+		worker();
+	} else{
+		master();
+	}
+	
 	//Ordena
 	sort(&buckets, numBuckets);
 	printBuckets(buckets, numBuckets);
 
-	
 	//Junta nos values de novo
 	free(values);
 	values = mergeBuckets(buckets, numBuckets, valuesSize);
@@ -53,7 +68,22 @@ int main(int argc, char *argv[]){
 	cleanBuckets(buckets, numBuckets);
 	free(buckets);
 	free(values);
+	
+	//Encerra o MPI
+	MPI_Finalize();	
 	return 0;
+}
+
+void master(int ***buckets, int num){
+	int i;
+	MPI_Request request;
+	for(i=1; i<num; i++){
+		MPI_Isend(*buckets[i], *buckets[i][0], MPI_INT, i, i, MPI_COMM_WORLD, *request);
+	}
+}
+
+void worker(int ***buckets, int num, int rank){
+
 }
 
 void createBuckets(int ***buckets, int num){
