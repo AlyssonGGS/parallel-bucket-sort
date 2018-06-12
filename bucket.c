@@ -6,6 +6,7 @@ void createBuckets(int ***buckets, int num);
 void generateValues(int **values, int size, int range);
 void populateBuckets(int ***buckets, int numBuckets, int *values, int numValues);
 void printBuckets(int **buckets, int num);
+void sort(int ***buckets, int num);
 void cleanBuckets(int **buckets, int num);
 
 int main(int argc, char *argv[]){
@@ -31,10 +32,12 @@ int main(int argc, char *argv[]){
 	//Gera os valores randomicos para serem divididos nos buckets	
 	generateValues(&values, valuesSize, rangeNum);
 
-	//Popula os buckets pelo array gerado no método anterior, dividindo os valores entre os bucets
+	//Popula os buckets pelo array gerado no método anterior, dividindo os valores entre os buckets
 	populateBuckets(&buckets, numBuckets, values, valuesSize);
 	printBuckets(buckets, numBuckets);
 
+	sort(&buckets, numBuckets);
+	printBuckets(buckets, numBuckets);
 	//Limpa tuto
 	cleanBuckets(buckets, numBuckets);
 	free(buckets);
@@ -84,6 +87,24 @@ void printBuckets(int **buckets, int num){
 		}
 		printf("\n");
 	}
+}
+
+void sort(int ***buckets, int num){
+	int i, j, k, ** bucket = *buckets;
+	for(i=0; i<num; i++){
+		int *tempB = (int*) bucket[i];
+		for(j=1;j<tempB[0]+1;j++){
+			for(k=j+1;k<tempB[0]+1;k++){
+				if(tempB[j] > tempB[k]){
+					int temp = tempB[j];
+					tempB[j] = tempB[k];
+					tempB[k] = temp;
+				}
+			}
+		}
+		bucket[i] = tempB;
+	}
+	*buckets = bucket;
 }
 
 
