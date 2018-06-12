@@ -16,6 +16,7 @@ void master(int ***buckets, int num);
 void worker(int rank);
 
 int main(int argc, char *argv[]){
+	/* numero de buckets, range dos numeros, quantidade de valores */
 	MPI_Init(&argc,&argv);
 	if(argc < 4){
 		printf("Numero de argumentos insuficiente\n");
@@ -29,6 +30,7 @@ int main(int argc, char *argv[]){
 	sscanf(argv[1], "%d", &numBuckets);
 
 	int **buckets;
+	printf("criando buckets\n");
 	createBuckets(&buckets, numBuckets);
 
 	//Range para geração de numeros aleatorios
@@ -40,10 +42,12 @@ int main(int argc, char *argv[]){
 	sscanf(argv[3], "%d", &valuesSize);	
 
 	//Gera os valores randomicos para serem divididos nos buckets	
+	printf("preenchendo valores\n");
 	generateValues(&values, valuesSize, rangeNum);
 	printValues(values, valuesSize);
 
 	//Popula os buckets pelo array gerado no método anterior, dividindo os valores entre os buckets
+	printf("populando buckets\n");
 	populateBuckets(&buckets, numBuckets, values, valuesSize);
 	printBuckets(buckets, numBuckets);
 
@@ -51,22 +55,26 @@ int main(int argc, char *argv[]){
 	int myrank;
 	MPI_Comm_rank(MPI_COMM_WORLD, &myrank);
 	
+	/*
 	if(myrank != 0){
 		worker(myrank);
 	} else{
 		master(&buckets, myrank);
-	}
+	}*/
 	
 	//Ordena
+	printf("ordenando buckets\n");
 	sort(&buckets, numBuckets);
 	printBuckets(buckets, numBuckets);
 
 	//Junta nos values de novo
+	printf("juntando values\n");
 	free(values);
 	values = mergeBuckets(buckets, numBuckets, valuesSize);
 	printValues(values, valuesSize);
 
 	//Limpa tuto
+	printf("limpando\n");
 	cleanBuckets(buckets, numBuckets);
 	free(buckets);
 	free(values);
@@ -79,15 +87,20 @@ int main(int argc, char *argv[]){
 void master(int ***buckets, int num){
 	int i;
 	MPI_Request request;
-	for(i=1; i<num; i++){
-		MPI_Isend(*buckets[i], *buckets[i][0], MPI_INT, i, i, MPI_COMM_WORLD, &request);
-	}
+	for(i=1; i<num; i++) MPI_Isend(*buckets[i], *buckets[i][0], MPI_INT, i, i, MPI_COMM_WORLD, &request);
+	
+	//recebe buckets e junta
 }
 
 void worker(int rank){
 	int *bucket, num;
 	MPI_Status status;
 	MPI_Recv(&bucket, num, MPI_INT, 0, rank, MPI_COMM_WORLD, &status);
+	
+	//ordena
+	
+	//envia de volta
+	
 }
 
 void createBuckets(int ***buckets, int num){
@@ -134,28 +147,33 @@ void populateBuckets(int ***buckets, int numBuckets, int *values, int numValues)
 void printBuckets(int **buckets, int num){
 	int i, j;
 	for(i=0; i < num; i++){
-		printf("Bucket %d, com size %d: ", i, buckets[i][0]);
-		for(j=1; j < BUCKET_SIZE; j++){
+		if(buckets[i][0] > 1) printf("Bucket %d, com size %d: ", i, buckets[i][0]);
+		for(j=1; j < buckets[i][0]; j++){
 			printf("%d ", buckets[i][j]);
 		}
 		printf("\n");
 	}
 }
 
-void sort(int ***buckets, int num){
-	int i, j, k, ** bucket = *buckets;
-	for(i=0; i<num; i++){
-		int *tempB = (int*) bucket[i];
-		for(j=1;j<tempB[0]+1;j++){
-			for(k=j+1;k<tempB[0]+1;k++){
-				if(tempB[j] > tempB[k]){
-					int temp = tempB[j];
-					tempB[j] = tempB[k];
-					tempB[k] = temp;
-				}
+void bubbleSort(int **bucket, int i){
+	int j, k, *tempB = (int*) bucket[i];
+	for(j = 1; j < tempB[0] + 1; j++){
+		for(k = j + 1; k< tempB[0] + 1; k++){
+			if(tempB[j] > tempB[k]){
+				int temp = tempB[j];
+				tempB[j] = tempB[k];
+				tempB[k] = temp;
 			}
 		}
-		bucket[i] = tempB;
+	}
+	
+	*bucket = tempB;
+}
+
+void sort(int ***buckets, int num){
+	int i, ** bucket = *buckets;
+	for(i = 0; i < num; i++){
+		bubbleSort(buckets[i], i);
 	}
 	*buckets = bucket;
 }
