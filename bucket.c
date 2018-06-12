@@ -1,4 +1,5 @@
 #include <stdio.h>
+#include <mpi.h>
 #include <stdlib.h>
 #define BUCKET_SIZE 5
 
@@ -12,7 +13,7 @@ int* mergeBuckets(int **buckets, int num, int valuesSize);
 void cleanBuckets(int **buckets, int num);
 
 void master(int ***buckets, int num);
-void worker(int ***buckets, int num, int rank);
+void worker(int rank);
 
 int main(int argc, char *argv[]){
 	MPI_Init(&argc,&argv);
@@ -82,8 +83,10 @@ void master(int ***buckets, int num){
 	}
 }
 
-void worker(int ***buckets, int num, int rank){
-
+void worker(int rank){
+	int []bucket;
+	MPI_Status status;
+	MPI_Recv(&bucket, num, MPI_INT, 0, rank, &status);
 }
 
 void createBuckets(int ***buckets, int num){
