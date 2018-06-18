@@ -2,12 +2,11 @@
 //#include <mpi.h>
 #include <stdlib.h>
 #include <string.h>
-#define BUCKET_SIZE 5
 
 void createBuckets(int ***buckets, int num);
-void generateValues(int **values, int size, int range);
+void generateValues(int **values, int *count);
 void printValues(int *values, int num);
-void populateBuckets(int ***buckets, int numBuckets, int *values, int numValues);
+void populateBuckets(int ***buckets, int numBuckets, int *values, int count);
 void printBuckets(int **buckets, int num);
 void sort(int ***buckets, int num);
 int* mergeBuckets(int **buckets, int num, int valuesSize);
@@ -18,16 +17,12 @@ void worker(int rank);
 
 int main(int argc, char *argv[]){
 	//MPI_Init(&argc,&argv);
-	if(argc < 4){
+	if(argc < 2){
 		printf("Numero de argumentos insuficiente\n");
 		//MPI_Finalize();
 		return 1;
 	}
-<<<<<<< HEAD
-	//MPI_Comm_size(MPI_COMM_WORLD,&size);
-=======
-	MPI_Comm_size(MPI_COMM_WORLD,&size);
->>>>>>> parent of 875f784... Consertando erros de compilacao para mpicc
+//	MPI_Comm_size(MPI_COMM_WORLD,&size);
 	
 	int numBuckets;
 	sscanf(argv[1], "%d", &numBuckets);
@@ -35,39 +30,24 @@ int main(int argc, char *argv[]){
 	int **buckets;
 	createBuckets(&buckets, numBuckets);
 
-	//Range para geração de numeros aleatorios
-	int rangeNum;
-	sscanf(argv[2], "%d", &rangeNum);
-
-	//Quantidade de valores
-	int valuesSize, *values;
-	sscanf(argv[3], "%d", &valuesSize);	
-
+	int *values, count;
 	//Gera os valores randomicos para serem divididos nos buckets	
-	generateValues(&values, valuesSize, rangeNum);
-	printValues(values, valuesSize);
+	generateValues(&values, &count);
+	printValues(values, count);
 
 	//Popula os buckets pelo array gerado no método anterior, dividindo os valores entre os buckets
-	populateBuckets(&buckets, numBuckets, values, valuesSize);
+	populateBuckets(&buckets, numBuckets, values, count);
 	printBuckets(buckets, numBuckets);
 
 	//Define o ranking para distribuir os buckets
 	int myrank;
 	//MPI_Comm_rank(MPI_COMM_WORLD, &myrank);
 	
-<<<<<<< HEAD
 	/*if(myrank != 0){
 		worker();
 	} else{
 		master();
 	}*/
-=======
-	if(myrank != 0){
-		worker();
-	} else{
-		master();
-	}
->>>>>>> parent of 875f784... Consertando erros de compilacao para mpicc
 	
 	//Ordena
 	sort(&buckets, numBuckets);
@@ -75,8 +55,8 @@ int main(int argc, char *argv[]){
 
 	//Junta nos values de novo
 	free(values);
-	values = mergeBuckets(buckets, numBuckets, valuesSize);
-	printValues(values, valuesSize);
+	values = mergeBuckets(buckets, numBuckets, count);
+	printValues(values, count);
 
 	//Limpa tuto
 	cleanBuckets(buckets, numBuckets);
@@ -89,27 +69,17 @@ int main(int argc, char *argv[]){
 }
 
 void master(int ***buckets, int num){
-	int i;
-//	MPI_Request request;
-	for(i=1; i<num; i++){
-<<<<<<< HEAD
-//		MPI_Isend(*buckets[i], *buckets[i][0], MPI_INT, i, i, MPI_COMM_WORLD, *request);
-=======
-		MPI_Isend(*buckets[i], *buckets[i][0], MPI_INT, i, i, MPI_COMM_WORLD, *request);
->>>>>>> parent of 875f784... Consertando erros de compilacao para mpicc
-	}
+// 	int i;
+// //	MPI_Request request;
+// 	for(i=1; i<num; i++){
+// 		MPI_Isend(*buckets[i], *buckets[i][0], MPI_INT, i, i, MPI_COMM_WORLD, *request);
+// 	}
 }
 
 void worker(int rank){
-<<<<<<< HEAD
-	//int []bucket;
-//	MPI_Status status;
-//	MPI_Recv(&bucket, num, MPI_INT, 0, rank, &status);
-=======
-	int []bucket;
-	MPI_Status status;
-	MPI_Recv(&bucket, num, MPI_INT, 0, rank, &status);
->>>>>>> parent of 875f784... Consertando erros de compilacao para mpicc
+	// int []bucket;
+	// MPI_Status status;
+	// MPI_Recv(&bucket, num, MPI_INT, 0, rank, &status);
 }
 
 void createBuckets(int ***buckets, int num){
@@ -122,28 +92,33 @@ void createBuckets(int ***buckets, int num){
 	*buckets = temp_buckets;
 }
 
-void generateValues(int **values, int size, int range){
+void generateValues(int **values, int *count_values){
 	FILE *file;
-	if((file = fopen("nums.txt", "r")) != NULL){
+	if((file = fopen("nums", "r")) != NULL){
 		char *line = NULL;
 		size_t len = 0;
 		getline(&line, &len, file);
+				getline(&line, &len, file);
+	
 		//Cria o array dos numeros
-		printf("%s\n", line);
-		char *tempS = strchr(line, ',');
+		char *tempS = line;
 		int count = 0;
-		while(tempS != NULL){
-			printf("%s\n", tempS);
+		while(*tempS){
+			if(*tempS++ == ' ') count++;
+		}
+		printf("%d\n", count);
+		*count_values = count;
+		int *temp =  malloc(count * sizeof(int));
+		char *token;
+		token = strtok(line, " ");
+		count = 0;
+		while( token != NULL ) {
+			sscanf(token, "%d", &temp[count]);			
+			token = strtok(NULL, " ");
 			count++;
-			tempS = strchr(tempS, ',');
 		}
-		int i, *temp =  malloc(count * sizeof(int));
-		for(i=0; i < size; i++){
-			//Gera valores entre 0 e o range dos numeros
-			//Ex.: para range = 50 -> temp[i] vai receber valores entre 0 e 50(50 não incluso)
-			temp[i] = rand()%range;
-		}
-		*values=temp;
+
+		*values = temp;
 	}
 }
 
@@ -155,9 +130,9 @@ void printValues(int *values, int num) {
 	printf("\n");
 }
 
-void populateBuckets(int ***buckets, int numBuckets, int *values, int numValues){
+void populateBuckets(int ***buckets, int numBuckets, int *values, int count){
 	int i, j, **temp = *buckets, id;
-	for(i=0;i < numValues;i++){
+	for(i=0;i < count;i++){
 		//TODO: definir um jeito melhor de decidir qual bucket recebe qual numero
 		id = values[i] / numBuckets;
 		//Atualiza a contagem dos elementos do bucket
@@ -197,8 +172,8 @@ void sort(int ***buckets, int num){
 	*buckets = bucket;
 }
 
-int* mergeBuckets(int **buckets, int num, int valuesSize){
-	int *result = malloc(valuesSize * sizeof(int));
+int* mergeBuckets(int **buckets, int num, int size){
+	int *result = malloc(size * sizeof(int));
 	int i, j, count = 0;
 	for(i=0;i<num;i++){
 		for(j=1;j<buckets[i][0]+1;j++){
