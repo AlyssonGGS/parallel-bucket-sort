@@ -3,11 +3,11 @@
 #include <stdlib.h>
 #include <string.h>
 
-void createBuckets(int ***buckets, int num);
+void createBuckets(int ***buckets, int num, int bucketSize);
 void generateValues(int **values, int *count);
 void printValues(int *values, int num);
 void populateBuckets(int ***buckets, int numBuckets, int *values, int count);
-void printBuckets(int **buckets, int num);
+void printBuckets(int **buckets, int num, int bucketSize);
 void sort(int ***buckets, int num);
 int* mergeBuckets(int **buckets, int num, int valuesSize);
 void cleanBuckets(int **buckets, int num);
@@ -17,7 +17,7 @@ void worker(int rank);
 
 int main(int argc, char *argv[]){
 	//MPI_Init(&argc,&argv);
-	if(argc < 2){
+	if(argc < 3){
 		printf("Numero de argumentos insuficiente\n");
 		//MPI_Finalize();
 		return 1;
@@ -27,17 +27,19 @@ int main(int argc, char *argv[]){
 	int numBuckets;
 	sscanf(argv[1], "%d", &numBuckets);
 
+	int bucketSize;
+	sscanf(argv[2], "%d", &bucketSize);
+
+
 	int **buckets;
-	createBuckets(&buckets, numBuckets);
+	createBuckets(&buckets, numBuckets, bucketSize);
 
 	int *values, count;
 	//Gera os valores randomicos para serem divididos nos buckets	
 	generateValues(&values, &count);
-	printValues(values, count);
 
 	//Popula os buckets pelo array gerado no método anterior, dividindo os valores entre os buckets
 	populateBuckets(&buckets, numBuckets, values, count);
-	printBuckets(buckets, numBuckets);
 
 	//Define o ranking para distribuir os buckets
 	int myrank;
@@ -51,11 +53,12 @@ int main(int argc, char *argv[]){
 	
 	//Ordena
 	sort(&buckets, numBuckets);
-	printBuckets(buckets, numBuckets);
+	printBuckets(buckets, numBuckets, bucketSize);
 
 	//Junta nos values de novo
 	free(values);
 	values = mergeBuckets(buckets, numBuckets, count);
+	printf("Ordenado: ");
 	printValues(values, count);
 
 	//Limpa tuto
@@ -82,11 +85,11 @@ void worker(int rank){
 	// MPI_Recv(&bucket, num, MPI_INT, 0, rank, &status);
 }
 
-void createBuckets(int ***buckets, int num){
+void createBuckets(int ***buckets, int num, int bucketSize){
 	int i, **temp_buckets;
 	temp_buckets = malloc(num * sizeof(int*));
 	for(i=0; i < num; i++){
-		temp_buckets[i] = malloc(sizeof(int) * BUCKET_SIZE);	
+		temp_buckets[i] = malloc(sizeof(int) * bucketSize);	
 		temp_buckets[i][0] = 0;
 	}	
 	*buckets = temp_buckets;
@@ -143,11 +146,11 @@ void populateBuckets(int ***buckets, int numBuckets, int *values, int count){
 	*buckets= temp;
 }
 
-void printBuckets(int **buckets, int num){
+void printBuckets(int **buckets, int num, int bucketSize){
 	int i, j;
 	for(i=0; i < num; i++){
 		printf("Bucket %d, com size %d: ", i, buckets[i][0]);
-		for(j=1; j < BUCKET_SIZE; j++){
+		for(j=1; j < bucketSize; j++){
 			printf("%d ", buckets[i][j]);
 		}
 		printf("\n");
