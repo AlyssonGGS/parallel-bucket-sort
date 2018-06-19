@@ -17,6 +17,7 @@ void generateValues(int **values, int *count);
 void printValues(int *values, int num);
 void populateBuckets(int ***buckets, int numBuckets, int *values, int count);
 void printBuckets(int **buckets, int num, int bucketSize);
+int* bubbleSort(int *bucket);
 void sort(int ***buckets, int num);
 int* mergeBuckets(int **buckets, int num, int valuesSize);
 void cleanBuckets(int **buckets, int num);
@@ -179,20 +180,29 @@ void printBuckets(int **buckets, int num, int bucketSize){
 	}
 }
 
-void sort(int ***buckets, int num){
-	int i, j, k, ** bucket = *buckets;
-	for(i=0; i<num; i++){
-		int *tempB = (int*) bucket[i];
-		for(j=1;j<tempB[0]+1;j++){
-			for(k=j+1;k<tempB[0]+1;k++){
-				if(tempB[j] > tempB[k]){
-					int temp = tempB[j];
-					tempB[j] = tempB[k];
-					tempB[k] = temp;
-				}
+int* bubbleSort(int *bucket) {
+	int j, k;
+	for(j=1;j < bucket[0]+1;j++){
+		for(k=j+1;k<bucket[0]+1;k++){
+			if(bucket[j] > bucket[k]){
+				int temp = bucket[j];
+				bucket[j] = bucket[k];
+				bucket[k] = temp;
 			}
 		}
-		bucket[i] = tempB;
+	}
+	for(j=1;j<bucket[0] + 1;j++){
+		printf("%d", bucket[j]);	
+	}
+	printf("\n");
+	return bucket;
+}
+
+void sort(int ***buckets, int num){
+	int i, **bucket = *buckets;
+	for(i=0; i<num; i++){
+		printf("num: %d\n", num);
+		bucket[i] = bubbleSort(bucket[i]);
 	}
 	*buckets = bucket;
 }
