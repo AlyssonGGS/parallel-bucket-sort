@@ -22,7 +22,7 @@ void sort(int ***buckets, int num);
 int* mergeBuckets(int **buckets, int num, int valuesSize);
 void cleanBuckets(int **buckets, int num);
 
-void master(int ***buckets, int num);
+void master(int ***buckets, int num, int bucketSize);
 void worker(int rank);
 
 int main(int argc, char *argv[]){
@@ -61,7 +61,7 @@ int main(int argc, char *argv[]){
 		populateBuckets(&buckets, numBuckets, values, count);
 		printBuckets(buckets, numBuckets, bucketSize);
 		
-		master(&buckets, size);
+		master(&buckets, size, bucketSize);
 	}
 	
 	/*
@@ -85,27 +85,28 @@ int main(int argc, char *argv[]){
 	return 0;
 }
 
-void master(int ***buckets, int size){
+void master(int ***buckets, int size, int bucketSize){
 	int **aux = *buckets;
  	int i;
 	MPI_Request request;
  	for(i=1; i < size; i++){
- 		//int num = *buckets[i][0];
- 		int num = aux[i][0];
- 		MPI_Isend(&num, 1, MPI_INT, i, i, MPI_COMM_WORLD, &request);
+ 		//int num = aux[i][0];
+ 		MPI_Send(&bucketSize, 1, MPI_INT, i, i, MPI_COMM_WORLD);
  		//int MPI_Isend(const void *buf, int count, MPI_Datatype datatype, int dest, int tag, MPI_Comm comm, MPI_Request *request)
- 		//MPI_Isend(*buckets[i], *buckets[i][0], MPI_INT, i, i, MPI_COMM_WORLD, &request);
+ 		int * bucket = aux[i];
+ 		MPI_Send(bucket, bucketSize, MPI_INT, i, i, MPI_COMM_WORLD);
  	}
 }
 
 void worker(int rank){
-	int num, *bucket;
+	int num;
 	MPI_Status status;
 	MPI_Recv(&num, 1, MPI_INT, 0, rank, MPI_COMM_WORLD, &status);
 	printf("tarefa %d recebendo num = %d.\n", rank, num);
+	int bucket[num];
 	//int MPI_Recv(void *buf, int count, MPI_Datatype datatype, int source, int tag, MPI_Comm comm, MPI_Status *status)
-	//MPI_Recv(&bucket, num+1, MPI_INT, 0, rank, MPI_COMM_WORLD, &status);
-	//printValues(bucket, num+1);
+	MPI_Recv(&bucket, num, MPI_INT, 0, rank, MPI_COMM_WORLD, &status);
+	printValues(bucket, num);
 }
 
 void createBuckets(int ***buckets, int num, int bucketSize){
