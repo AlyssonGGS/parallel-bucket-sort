@@ -27,7 +27,7 @@ void worker(int rank);
 
 int main(int argc, char *argv[]){
 	MPI_Init(&argc,&argv);
-	if(argc < 3){
+	if(argc < 2){
 		printf("Numero de argumentos insuficiente\n");
 		MPI_Finalize();
 		return 1;
@@ -42,15 +42,11 @@ int main(int argc, char *argv[]){
 	if(myrank != 0){
 		worker(myrank);
 	} else{
-		int numBuckets;
-		sscanf(argv[1], "%d", &numBuckets);
-
 		int bucketSize;
-		sscanf(argv[2], "%d", &bucketSize);
-
+		sscanf(argv[1], "%d", &bucketSize);
 
 		int **buckets;
-		createBuckets(&buckets, numBuckets, bucketSize);
+		createBuckets(&buckets, size, bucketSize);
 	
 		int *values, count;
 		//Gera os valores randomicos para serem divididos nos buckets	
@@ -58,8 +54,8 @@ int main(int argc, char *argv[]){
 		printValues(values, count);
 
 		//Popula os buckets pelo array gerado no método anterior, dividindo os valores entre os buckets
-		populateBuckets(&buckets, numBuckets, values, count);
-		printBuckets(buckets, numBuckets, bucketSize);
+		populateBuckets(&buckets, size, values, count);
+		printBuckets(buckets, size, bucketSize);
 		
 		master(&buckets, size, bucketSize);
 	}
@@ -90,23 +86,31 @@ void master(int ***buckets, int size, int bucketSize){
  	int i;
 	MPI_Request request;
  	for(i=1; i < size; i++){
- 		//int num = aux[i][0];
  		MPI_Send(&bucketSize, 1, MPI_INT, i, i, MPI_COMM_WORLD);
- 		//int MPI_Isend(const void *buf, int count, MPI_Datatype datatype, int dest, int tag, MPI_Comm comm, MPI_Request *request)
  		int * bucket = aux[i];
  		MPI_Send(bucket, bucketSize, MPI_INT, i, i, MPI_COMM_WORLD);
  	}
+ 	aux[0] = bubbleSort(aux[0]);
+ 	MPI_Status status;
+ 	for(i=1; i < size; i++){
+ 		MPI_Recv(aux[i], bucketSize, MPI_INT, i, 0, MPI_COMM_WORLD, &status);
+ 	}
+ 	
+ 	printBuckets(aux, size, 0);
+ 	int * values = mergeBuckets(aux, size, 10);
+ 	printValues(values, 10);
 }
 
 void worker(int rank){
 	int num;
 	MPI_Status status;
 	MPI_Recv(&num, 1, MPI_INT, 0, rank, MPI_COMM_WORLD, &status);
-	printf("tarefa %d recebendo num = %d.\n", rank, num);
 	int bucket[num];
-	//int MPI_Recv(void *buf, int count, MPI_Datatype datatype, int source, int tag, MPI_Comm comm, MPI_Status *status)
 	MPI_Recv(&bucket, num, MPI_INT, 0, rank, MPI_COMM_WORLD, &status);
-	printValues(bucket, num);
+	memcpy(bucket, bubbleSort(bucket), num);
+	
+	/*voltar pro master*/
+	MPI_Send(bucket, num, MPI_INT, 0, 0, MPI_COMM_WORLD);
 }
 
 void createBuckets(int ***buckets, int num, int bucketSize){
@@ -133,7 +137,6 @@ void generateValues(int **values, int *count_values){
 		while(*tempS){
 			if(*tempS++ == ' ') count++;
 		}
-		printf("%d\n", count);
 		*count_values = count;
 		int *temp =  malloc(count * sizeof(int));
 		char *token;
@@ -174,7 +177,7 @@ void printBuckets(int **buckets, int num, int bucketSize){
 	int i, j;
 	for(i=0; i < num; i++){
 		printf("Bucket %d, com size %d: ", i, buckets[i][0]);
-		for(j=1; j < bucketSize; j++){
+		for(j=1; j <= buckets[i][0]; j++){
 			printf("%d ", buckets[i][j]);
 		}
 		printf("\n");
