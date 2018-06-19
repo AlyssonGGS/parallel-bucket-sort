@@ -1,7 +1,16 @@
 #include <stdio.h>
-//#include <mpi.h>
+#include <mpi.h>
 #include <stdlib.h>
 #include <string.h>
+
+/*
+
+mpicc -o trab bucket.c & scp ./trab lab@L307-1A:/home/lab/lab/
+mpirun --hostfile host -np 2 -mca plm_rsh_no_tree_spawn 1 trab 3 50
+mpicc -o trab bucket.c 
+
+*/
+
 
 void createBuckets(int ***buckets, int num, int bucketSize);
 void generateValues(int **values, int *count);
@@ -16,41 +25,45 @@ void master(int ***buckets, int num);
 void worker(int rank);
 
 int main(int argc, char *argv[]){
-	//MPI_Init(&argc,&argv);
+	MPI_Init(&argc,&argv);
 	if(argc < 3){
 		printf("Numero de argumentos insuficiente\n");
-		//MPI_Finalize();
+		MPI_Finalize();
 		return 1;
 	}
-//	MPI_Comm_size(MPI_COMM_WORLD,&size);
+	int size;
+	MPI_Comm_size(MPI_COMM_WORLD, &size);
 	
-	int numBuckets;
-	sscanf(argv[1], "%d", &numBuckets);
-
-	int bucketSize;
-	sscanf(argv[2], "%d", &bucketSize);
-
-
-	int **buckets;
-	createBuckets(&buckets, numBuckets, bucketSize);
-
-	int *values, count;
-	//Gera os valores randomicos para serem divididos nos buckets	
-	generateValues(&values, &count);
-
-	//Popula os buckets pelo array gerado no método anterior, dividindo os valores entre os buckets
-	populateBuckets(&buckets, numBuckets, values, count);
-
 	//Define o ranking para distribuir os buckets
 	int myrank;
-	//MPI_Comm_rank(MPI_COMM_WORLD, &myrank);
+	MPI_Comm_rank(MPI_COMM_WORLD, &myrank);
 	
-	/*if(myrank != 0){
-		worker();
+	if(myrank != 0){
+		worker(myrank);
 	} else{
-		master();
-	}*/
+		int numBuckets;
+		sscanf(argv[1], "%d", &numBuckets);
+
+		int bucketSize;
+		sscanf(argv[2], "%d", &bucketSize);
+
+
+		int **buckets;
+		createBuckets(&buckets, numBuckets, bucketSize);
 	
+		int *values, count;
+		//Gera os valores randomicos para serem divididos nos buckets	
+		generateValues(&values, &count);
+		printValues(values, count);
+
+		//Popula os buckets pelo array gerado no método anterior, dividindo os valores entre os buckets
+		populateBuckets(&buckets, numBuckets, values, count);
+		printBuckets(buckets, numBuckets, bucketSize);
+		
+		master(&buckets, size);
+	}
+	
+	/*
 	//Ordena
 	sort(&buckets, numBuckets);
 	printBuckets(buckets, numBuckets, bucketSize);
@@ -60,29 +73,38 @@ int main(int argc, char *argv[]){
 	values = mergeBuckets(buckets, numBuckets, count);
 	printf("Ordenado: ");
 	printValues(values, count);
-
+	
 	//Limpa tuto
 	cleanBuckets(buckets, numBuckets);
 	free(buckets);
 	free(values);
-	
+	*/
 	//Encerra o MPI
-	//MPI_Finalize();	
+	MPI_Finalize();	
 	return 0;
 }
 
-void master(int ***buckets, int num){
-// 	int i;
-// //	MPI_Request request;
-// 	for(i=1; i<num; i++){
-// 		MPI_Isend(*buckets[i], *buckets[i][0], MPI_INT, i, i, MPI_COMM_WORLD, *request);
-// 	}
+void master(int ***buckets, int size){
+	int **aux = *buckets;
+ 	int i;
+	MPI_Request request;
+ 	for(i=1; i < size; i++){
+ 		//int num = *buckets[i][0];
+ 		int num = aux[i][0];
+ 		MPI_Isend(&num, 1, MPI_INT, i, i, MPI_COMM_WORLD, &request);
+ 		//int MPI_Isend(const void *buf, int count, MPI_Datatype datatype, int dest, int tag, MPI_Comm comm, MPI_Request *request)
+ 		//MPI_Isend(*buckets[i], *buckets[i][0], MPI_INT, i, i, MPI_COMM_WORLD, &request);
+ 	}
 }
 
 void worker(int rank){
-	// int []bucket;
-	// MPI_Status status;
-	// MPI_Recv(&bucket, num, MPI_INT, 0, rank, &status);
+	int num, *bucket;
+	MPI_Status status;
+	MPI_Recv(&num, 1, MPI_INT, 0, rank, MPI_COMM_WORLD, &status);
+	printf("tarefa %d recebendo num = %d.\n", rank, num);
+	//int MPI_Recv(void *buf, int count, MPI_Datatype datatype, int source, int tag, MPI_Comm comm, MPI_Status *status)
+	//MPI_Recv(&bucket, num+1, MPI_INT, 0, rank, MPI_COMM_WORLD, &status);
+	//printValues(bucket, num+1);
 }
 
 void createBuckets(int ***buckets, int num, int bucketSize){
