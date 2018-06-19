@@ -52,12 +52,14 @@ int main(int argc, char *argv[]){
 		//Gera os valores randomicos para serem divididos nos buckets	
 		generateValues(&values, &count);
 		printValues(values, count);
-
+		printf("\ncount = %d\n", count);
 		//Popula os buckets pelo array gerado no método anterior, dividindo os valores entre os buckets
 		populateBuckets(&buckets, size, values, count);
 		printBuckets(buckets, size, bucketSize);
 		
 		master(&buckets, size, bucketSize);
+		//cleanBuckets(buckets, size);
+		//free(buckets);
 	}
 	
 	/*
@@ -96,9 +98,10 @@ void master(int ***buckets, int size, int bucketSize){
  		MPI_Recv(aux[i], bucketSize, MPI_INT, i, 0, MPI_COMM_WORLD, &status);
  	}
  	
- 	printBuckets(aux, size, 0);
+ 	//printBuckets(aux, size, 0);
  	int * values = mergeBuckets(aux, size, 10);
  	printValues(values, 10);
+ 	//free(values);
 }
 
 void worker(int rank){
@@ -147,7 +150,6 @@ void generateValues(int **values, int *count_values){
 			token = strtok(NULL, " ");
 			count++;
 		}
-
 		*values = temp;
 	}
 }
@@ -165,6 +167,7 @@ void populateBuckets(int ***buckets, int numBuckets, int *values, int count){
 	for(i=0;i < count;i++){
 		//TODO: definir um jeito melhor de decidir qual bucket recebe qual numero
 		id = values[i] / numBuckets;
+		id %= numBuckets;
 		//Atualiza a contagem dos elementos do bucket
 		temp[id][0]++;
 		//Insere no bucket	
@@ -195,10 +198,6 @@ int* bubbleSort(int *bucket) {
 			}
 		}
 	}
-	for(j=1;j<bucket[0] + 1;j++){
-		printf("%d", bucket[j]);	
-	}
-	printf("\n");
 	return bucket;
 }
 
