@@ -22,7 +22,7 @@ void sort(int ***buckets, int num);
 int* mergeBuckets(int **buckets, int num, int valuesSize);
 void cleanBuckets(int **buckets, int num);
 
-void master(int ***buckets, int num, int bucketSize);
+void master(int ***buckets, int num, int bucketSize, int count);
 void worker(int rank);
 
 int main(int argc, char *argv[]){
@@ -39,6 +39,8 @@ int main(int argc, char *argv[]){
 	if(myrank != 0){
 		worker(myrank);
 	} else{
+		double stime, etime;
+		stime = MPI_Wtime();
 		int bucketCount;
 		MPI_Comm_size(MPI_COMM_WORLD, &bucketCount);
 	
@@ -53,21 +55,24 @@ int main(int argc, char *argv[]){
 		//Gera os valores randomicos para serem divididos nos buckets	
 		generateValues(&values, &count);
 		printValues(values, count);
-		printf("\ncount = %d\n", count);
 		//Popula os buckets pelo array gerado no método anterior, dividindo os valores entre os buckets
 		populateBuckets(&buckets, bucketSize, values, count);
 		printBuckets(buckets, bucketCount, bucketSize);
 		
-		master(&buckets, bucketCount, bucketSize);
-		cleanBuckets(buckets, size);
-		free(buckets);
+		master(&buckets, bucketCount, bucketSize, count);
+		//cleanBuckets(buckets, bucketCount);
+		//free(buckets);
+		etime = MPI_Wtime();
+		printf("Elapsed time: %.5lf\n", etime - stime);
 	}
 	
 	MPI_Finalize();	
 	return 0;
 }
 
-void master(int ***buckets, int bucketCount, int bucketSize){
+void master(int ***buckets, int bucketCount, int bucketSize, int count){
+	double stime, etime;
+	stime = MPI_Wtime();
 	int **aux = *buckets;
  	int i;
  	for(i=1; i < bucketCount; i++){
@@ -83,12 +88,15 @@ void master(int ***buckets, int bucketCount, int bucketSize){
  	for(i=1; i < bucketCount; i++){
  		MPI_Recv(aux[i], bucketSize, MPI_INT, i, 0, MPI_COMM_WORLD, &status);
  	}
- 	int * values = mergeBuckets(aux, bucketCount, 10);
- 	// printValues(values, 10);
-	free(values);
+ 	int * values = mergeBuckets(aux, bucketCount, count);
+ 	printValues(values, count);
+	etime = MPI_Wtime();
+	printf("0, %d, %.7lf\n", *aux[0], etime-stime); 
 }
 
 void worker(int rank){
+	double stime, etime;
+	stime = MPI_Wtime();
 	int num;
 	MPI_Status status;
 	//Recebe o tamanho do bucket
@@ -100,6 +108,8 @@ void worker(int rank){
 	memcpy(bucket, bubbleSort(bucket), num);
 	//Volta pro master
 	MPI_Send(bucket, num, MPI_INT, 0, 0, MPI_COMM_WORLD);
+	etime = MPI_Wtime();
+	printf("%d, %d, %.7lf\n", rank, bucket[0], etime-stime);
 }
 
 void createBuckets(int ***buckets, int num, int bucketSize){
@@ -109,7 +119,7 @@ void createBuckets(int ***buckets, int num, int bucketSize){
 	for(i=0; i < num; i++){
 		//Aloca um array que representa o bucket
 		//Soma 1 pois o indice 0 é usado para guardar o numero de elementos no bucket
-		temp_buckets[i] = malloc(sizeof(int) * (bucketSize + 1);
+		temp_buckets[i] = malloc(sizeof(int) * (bucketSize + 1));
 		for(j=0; j < bucketSize; j++){
 			temp_buckets[i][j] = 0;
 		}
@@ -120,29 +130,30 @@ void createBuckets(int ***buckets, int num, int bucketSize){
 void generateValues(int **values, int *count_values){
 	FILE *file;
 	if((file = fopen("nums", "r")) != NULL){
-		//Guarda a linha		
 		char *line = NULL;
 		size_t len = 0;
 		getline(&line, &len, file);
-		//Cria um array temporario para atribuir posteriormente ao array na main
-		int *temp =  malloc(count * sizeof(int));
-		//Faz o parsing dos numeros para o array
+				getline(&line, &len, file);
+	
+		//Cria o array dos numeros
+		char *tempS = line;
 		int count = 0;
+		while(*tempS){
+			if(*tempS++ == ' ') count++;
+		}
+		*count_values = count;
+		int *temp =  malloc(count * sizeof(int));
 		char *token;
 		token = strtok(line, " ");
-		while(token != NULL ) {
-			sscanf(token, "%d", &temp[count++]);			
+		count = 0;
+		while( token != NULL ) {
+			sscanf(token, "%d", &temp[count]);			
 			token = strtok(NULL, " ");
+			count++;
 		}
-		//Copia o array temporario para a main
 		*values = temp;
-		//Atualiza a variavel que conta os numeros na main
-		*count_values = count;
-		//Fecha o arquivo
-		fclose(file);
 	}
 }
-
 void printValues(int *values, int num) {
 	int i;
 	for(i=0;i<num;i++){
