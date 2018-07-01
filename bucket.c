@@ -81,8 +81,6 @@ void generateValues(int **values, int *count_values){
 		char *line = NULL;
 		size_t len = 0;
 		getline(&line, &len, file);
-				getline(&line, &len, file);
-	 the remote repository: git push -u origin feature_branch_nam
 		//Cria o array dos numeros
 		char *tempS = line;
 		int count = 0;
@@ -138,7 +136,7 @@ void populateBuckets(int ***buckets, int tamBuckets, int *values, int count){
 void printBuckets(int **buckets, int num, int bucketSize){
 	int i, j;
 	for(i=0; i < num; i++){
-		printf("Bucket %d, com size %d: ", i, buckets[i][0]) the remote repository: git push -u origin feature_branch_nam;
+		printf("Bucket %d, com size %d: ", i, buckets[i][0]);
 		for(j=1; j < bucketSize; j++){
 			printf("%d ", buckets[i][j]);
 		}
