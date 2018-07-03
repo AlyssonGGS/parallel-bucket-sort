@@ -26,8 +26,11 @@ int main(int argc, char *argv[]){
 	sscanf(argv[1], "%d", &numBuckets);
 
 	int bucketSize;
-	sscanf(argv[2], "%d", &bucketSize);
-
+	//sscanf(argv[2], "%d", &bucketSize);
+	int range;
+	sscanf(argv[2], "%d", &range);
+	bucketSize = range/numBuckets;
+	if (range%numBuckets!=0) bucketSize++;
 
 	int **buckets;
 	createBuckets(&buckets, numBuckets, bucketSize);
