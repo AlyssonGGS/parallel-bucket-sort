@@ -60,7 +60,7 @@ int main(int argc, char *argv[]){
 		int nthreads = omp_get_num_threads();
 		sort_p(&buckets, id ,numBuckets/nthreads);
 	}
-	printBuckets(buckets, numBuckets, bucketSize);
+	//printBuckets(buckets, numBuckets, bucketSize);
 
 	//Junta nos values de novo
 	free(values);
@@ -102,7 +102,7 @@ void generateValues(int **values, int *count_values){
 		while(*tempS){
 			if(*tempS++ == ' ') count++;
 		}
-		printf("%d\n", count);
+		//printf("%d\n", count);
 		*count_values = count;
 		int *temp =  malloc(count * sizeof(int));
 		char *token;
