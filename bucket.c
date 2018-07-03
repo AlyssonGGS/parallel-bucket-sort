@@ -2,6 +2,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <omp.h>
+#include <time.h>
 
 void createBuckets(int ***buckets, int num, int bucketSize);
 void generateValues(int **values, int *count);
@@ -17,7 +18,10 @@ void master(int ***buckets, int num);
 void worker(int rank);
 
 int main(int argc, char *argv[]){
-	if(argc < 3){
+	clock_t start, end;
+	start = clock();
+	
+	if(argc < 4){
 		printf("Numero de argumentos insuficiente\n");
 		return 1;
 	}
@@ -30,7 +34,12 @@ int main(int argc, char *argv[]){
 	int range;
 	sscanf(argv[2], "%d", &range);
 	bucketSize = range/numBuckets;
+	//printf("range: %d\nnumBuckets: %d\nbucketSize: %d\n",range,numBuckets,bucketSize);
 	if (range%numBuckets!=0) bucketSize++;
+	
+	int nthreads;
+	sscanf(argv[3], "%d", &nthreads);
+	
 
 	int **buckets;
 	createBuckets(&buckets, numBuckets, bucketSize);
@@ -41,11 +50,10 @@ int main(int argc, char *argv[]){
 	
 
 	//Popula os buckets pelo array gerado no método anterior, dividindo os valores entre os buckets
-	//erro aqui
 	populateBuckets(&buckets, bucketSize , values, count);
 	
 	//Ordena
-	omp_set_num_threads(2);
+	omp_set_num_threads(nthreads);
 	#pragma omp parallel
 	{
 		int id = omp_get_thread_num();
@@ -64,6 +72,10 @@ int main(int argc, char *argv[]){
 	cleanBuckets(buckets, numBuckets);
 	free(buckets);
 	free(values);
+	
+	end = clock();
+	double cpu_time_used = ((double) (end - start)) / CLOCKS_PER_SEC;
+	printf("Elapsed Time: %lf",cpu_time_used);
 	
 	return 0;
 }
