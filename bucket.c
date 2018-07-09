@@ -13,17 +13,18 @@ mpicc -o trab bucket.c
 
 
 void createBuckets(int ***buckets, int num, int bucketSize);
-void generateValues(int **values, int *count);
+void generateValues(int **values, int *count, char *filename);
 void printValues(int *values, int num);
 void populateBuckets(int ***buckets, int numBuckets, int *values, int count);
 void printBuckets(int **buckets, int num, int bucketSize);
-int* bubbleSort(int *bucket);
+void bubbleSort(int **b);
 void sort(int ***buckets, int num);
 int* mergeBuckets(int **buckets, int num, int valuesSize);
 void cleanBuckets(int **buckets, int num);
 
 void master(int ***buckets, int num, int bucketSize, int bucketPerProcess, int count);
 void worker(int rank);
+
 
 int main(int argc, char *argv[]){
 	MPI_Init(&argc, &argv);
@@ -34,24 +35,24 @@ int main(int argc, char *argv[]){
 		return 1;
 	}
 
-	int size;
-	MPI_Comm_size(MPI_COMM_WORLD, &size);
+	int processCount;
+	MPI_Comm_size(MPI_COMM_WORLD, &processCount);
 
 	//Guarda o tamanho do bucket
 	int bucketSize;
-	sscanf(argv[1], "%d", &bucketSize);
+	sscanf(argv[2], "%d", &bucketSize);
 
 	int bucketCount;
-	sscanf(argv[2], "%d", &bucketCount);
+	sscanf(argv[3], "%d", &bucketCount);
 
-	int bucketPerProcess;
-	sscanf(argv[3], "%d", &bucketPerProcess);
 
-	if(bucketPerProcess * size != bucketCount){
+	if(bucketCount % processCount != 0){
 		printf("Organização dos buckets errada\n");
 		MPI_Finalize();	
 		return 1;
 	}
+	int bucketPerProcess = bucketCount/processCount;
+	printf("Buckets por processo: %d\n", bucketPerProcess);
 
 	//Define o ranking para distribuir os buckets
 	int myrank;
@@ -65,73 +66,77 @@ int main(int argc, char *argv[]){
 	
 		int *values, count;
 		//Gera os valores randomicos para serem divididos nos buckets	
-		generateValues(&values, &count);
-		printValues(values, count);
+		generateValues(&values, &count, argv[1]);
 		//Popula os buckets pelo array gerado no método anterior, dividindo os valores entre os buckets
-		populateBuckets(&buckets, bucketSize * bucketCount, values, count);
-		printBuckets(buckets, bucketCount, bucketSize);
-		
-		master(&buckets, size, bucketSize, bucketPerProcess, count);
+		populateBuckets(&buckets, bucketSize, values, count);
+		// printBuckets(buckets, bucketCount, bucketSize);
+		double starttime, endtime;
+		starttime = MPI_Wtime();
+		master(&buckets, processCount, bucketSize + 1, bucketPerProcess, count);
+		values = mergeBuckets(buckets, bucketCount, count);
+		// printValues(values, count);
+		endtime = MPI_Wtime();
+		printf("Tempo total: %lf\n", endtime-starttime);
+		//Limpa memmoria
 		cleanBuckets(buckets, bucketCount);
-		free(buckets);
 		free(values);
 	}
 	MPI_Finalize();	
-	printf("Lelecsu:%d\n", myrank);
+	return 0;
 }
 
-void master(int ***buckets, int size, int bucketSize, int bucketPerProcess, int count){
+void master(int ***buckets, int processCount, int bucketSize, int bucketPerProcess, int count){
 	int **aux = *buckets;
  	int i, j;
- 	for(i=1; i < size; i++){
+ 	for(i=1; i < processCount; i++){
 		//Envia primeiro a quantidade de elementos para criação do array
  		MPI_Send(&bucketPerProcess, 1, MPI_INT, i, i, MPI_COMM_WORLD);
 		//Envia primeiro a quantidade de elementos para criação do array
  		MPI_Send(&bucketSize, 1, MPI_INT, i, i, MPI_COMM_WORLD);
 		//Envia o array para o worker
 		for(j=0; j<bucketPerProcess; j++){
- 			MPI_Send(&(aux[(i * bucketPerProcess)+j][0]), bucketSize, MPI_INT, i, i, MPI_COMM_WORLD);
+ 			MPI_Send(aux[(i * bucketPerProcess)+j], bucketSize, MPI_INT, i, i, MPI_COMM_WORLD);
 		}
  	}
 	//Ordena o proprio array	
-	for(i = 0; i < bucketPerProcess; i++){
- 		aux[i] = bubbleSort(aux[i]);
-	}
+	sort(&aux, bucketPerProcess);
+
 	//Recebe os outros arrays dos workers
  	MPI_Status status;
- 	for(i=1; i < size; i++){
+ 	for(i=1; i < processCount; i++){
 		 for(j=0; j<bucketPerProcess; j++){
 			MPI_Recv(aux[(i * bucketPerProcess)+j], bucketSize, MPI_INT, i, 0, MPI_COMM_WORLD, &status);
-			printf("VRAU: %d\n", aux[(i * bucketPerProcess)+j][0]);
+			//printf("Elementos: %d\n", aux[(i * bucketPerProcess)+j][0]);
 		}
  	}
- 	printValues(mergeBuckets(aux, size*bucketPerProcess, count), count);
+	*buckets = aux;
 }
 
 void worker(int rank){
-	int qtd, num;
+	int bucketSize, bucketPerProcess;
 	MPI_Status status;
-	//Recebe o tamanho do bucket
-	MPI_Recv(&qtd, 1, MPI_INT, 0, rank, MPI_COMM_WORLD, &status);
-	//Recebe o tamanho do bucket
-	MPI_Recv(&num, 1, MPI_INT, 0, rank, MPI_COMM_WORLD, &status);
+	//Recebe a quantidade de buckets
+	MPI_Recv(&bucketPerProcess, 1, MPI_INT, 0, rank, MPI_COMM_WORLD, &status);
+	//Recebe o tamanho de bucket
+	MPI_Recv(&bucketSize, 1, MPI_INT, 0, rank, MPI_COMM_WORLD, &status);
 	//Recebe o bucket
 	int **bucket, i;
+	//Inicializa os buckets
+	bucket = malloc(sizeof(int*) * bucketPerProcess);
+	for(i = 0; i < bucketPerProcess; i++){
+		bucket[i] = malloc(sizeof(int) * bucketSize);
+	}
 
-	bucket = malloc(sizeof(int*) * qtd);
-	for(i = 0; i < qtd; i++){
-		bucket[i] = malloc(sizeof(int) * num);
+	for(i=0; i< bucketPerProcess; i++){
+		MPI_Recv(bucket[i], bucketSize, MPI_INT, 0, rank, MPI_COMM_WORLD, &status);
 	}
+
+	sort(&bucket, bucketPerProcess);
 	
-	for(i=0; i< qtd; i++){
-		MPI_Recv(bucket[i], num, MPI_INT, 0, rank, MPI_COMM_WORLD, &status);
+	for(i = 0; i < bucketPerProcess; i++){
+		MPI_Send(bucket[i], bucketSize, MPI_INT, 0, 0, MPI_COMM_WORLD);
 	}
-	//Ordena o array
-	sort(&bucket, qtd);
-	for(i = 0; i < qtd; i++){
-		MPI_Send(bucket[i], num, MPI_INT, 0, 0, MPI_COMM_WORLD);
-	}
-	free(bucket);
+	cleanBuckets(bucket, bucketPerProcess);
 }
 
 void createBuckets(int ***buckets, int num, int bucketSize){
@@ -149,9 +154,9 @@ void createBuckets(int ***buckets, int num, int bucketSize){
 	*buckets = temp_buckets;
 }
 
-void generateValues(int **values, int *count_values){
+void generateValues(int **values, int *count_values, char *filename){
 	FILE *file;
-	if((file = fopen("nums", "r")) != NULL){
+	if((file = fopen(filename, "r")) != NULL) {
 		char *line = NULL;
 		size_t len = 0;
 		getline(&line, &len, file);	
@@ -163,13 +168,11 @@ void generateValues(int **values, int *count_values){
 		}
 		*count_values = count;
 		int *temp =  malloc(count * sizeof(int));
-		char *token;
-		token = strtok(line, " ");
+		char *token = strtok(line, " ");
 		count = 0;
 		while( token != NULL ) {
-			sscanf(token, "%d", &temp[count]);			
+			sscanf(token, "%d", &temp[count++]);			
 			token = strtok(NULL, " ");
-			count++;
 		}
 		*values = temp;
 	}
@@ -209,8 +212,8 @@ void printBuckets(int **buckets, int num, int bucketSize){
 	}
 }
 
-int* bubbleSort(int *bucket) {
-	int j, k;
+void bubbleSort(int **b) {
+	int j, k, *bucket = *b ;
 	for(j=1;j < bucket[0]+1;j++){
 		for(k=j+1;k<bucket[0]+1;k++){ 
 			if(bucket[j] > bucket[k]){
@@ -220,14 +223,13 @@ int* bubbleSort(int *bucket) {
 			}
 		}
 	}
-	return bucket;
+	*b = bucket;
 }
 
 void sort(int ***buckets, int num){
 	int i, **bucket = *buckets;
-	for(i=0; i<num; i++){
-		if(bucket[i][0] != 0)
-			bucket[i] = bubbleSort(bucket[i]);
+	for(i=num-1; i>=0; i--){
+		bubbleSort(&bucket[i]);
 	}
 	*buckets = bucket;
 }
@@ -246,7 +248,8 @@ int* mergeBuckets(int **buckets, int num, int size){
 
 void cleanBuckets(int **buckets, int num){
 	int i;
-	for(i=0; i<num; i++){
+	for(i= num - 1; i >= 0; i--){
 		free(buckets[i]);
 	}
+	free(buckets);
 }
