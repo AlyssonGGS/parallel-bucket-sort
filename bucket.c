@@ -5,7 +5,7 @@
 #include <time.h>
 
 void createBuckets(int ***buckets, int num, int bucketSize);
-void generateValues(int **values, int *count);
+void generateValues(int **values, int *count, char *filename);
 void printValues(int *values, int num);
 void populateBuckets(int ***buckets, int numBuckets, int *values, int count);
 void printBuckets(int **buckets, int num, int bucketSize);
@@ -18,10 +18,7 @@ void master(int ***buckets, int num);
 void worker(int rank);
 
 int main(int argc, char *argv[]){
-	clock_t start, end;
-	start = clock();
-	
-	if(argc < 4){
+	if(argc < 5){
 		printf("Numero de argumentos insuficiente\n");
 		return 1;
 	}
@@ -30,25 +27,26 @@ int main(int argc, char *argv[]){
 	sscanf(argv[1], "%d", &numBuckets);
 
 	int bucketSize;
-	//sscanf(argv[2], "%d", &bucketSize);
-	int range;
-	sscanf(argv[2], "%d", &range);
-	bucketSize = range/numBuckets;
-	//printf("range: %d\nnumBuckets: %d\nbucketSize: %d\n",range,numBuckets,bucketSize);
-	if (range%numBuckets!=0) bucketSize++;
+	sscanf(argv[2], "%d", &bucketSize);
 	
 	int nthreads;
 	sscanf(argv[3], "%d", &nthreads);
+
+	if(numBuckets % nthreads != 0) {
+		printf("Erro nos parametros de execução\n");
+		return 1;
+	}
 	
 
 	int **buckets;
 	createBuckets(&buckets, numBuckets, bucketSize);
 
 	int *values, count;
+	clock_t start, end;
+	start = clock();
 	//Gera os valores randomicos para serem divididos nos buckets	
-	generateValues(&values, &count);
+	generateValues(&values, &count, argv[4]);
 	
-
 	//Popula os buckets pelo array gerado no método anterior, dividindo os valores entre os buckets
 	populateBuckets(&buckets, bucketSize , values, count);
 	
@@ -57,8 +55,7 @@ int main(int argc, char *argv[]){
 	#pragma omp parallel
 	{
 		int id = omp_get_thread_num();
-		int nthreads = omp_get_num_threads();
-		sort_p(&buckets, id ,numBuckets/nthreads);
+		sort_p(&buckets, id, numBuckets/nthreads);
 	}
 	//printBuckets(buckets, numBuckets, bucketSize);
 
@@ -76,7 +73,6 @@ int main(int argc, char *argv[]){
 	end = clock();
 	double cpu_time_used = ((double) (end - start)) / CLOCKS_PER_SEC;
 	printf("Elapsed Time: %lf",cpu_time_used);
-	
 	return 0;
 }
 
@@ -90,9 +86,9 @@ void createBuckets(int ***buckets, int num, int bucketSize){
 	*buckets = temp_buckets;
 }
 
-void generateValues(int **values, int *count_values){
+void generateValues(int **values, int *count_values, char *filename){
 	FILE *file;
-	if((file = fopen("nums", "r")) != NULL){
+	if((file = fopen(filename, "r")) != NULL){
 		char *line = NULL;
 		size_t len = 0;
 		getline(&line, &len, file);
@@ -132,7 +128,7 @@ void populateBuckets(int ***buckets, int tamBuckets, int *values, int count){
 	for(i=0;i < count;i++){
 		//TODO: definir um jeito melhor de decidir qual bucket recebe qual numero
 		id = values[i] / tamBuckets;
-		
+		printf("%d\n", id);
 		//printf("values %d\n",values[i]);
 		//printf("tamanho bucket %d\n",tamBuckets);
 		//printf("%d\n",id);
@@ -141,7 +137,6 @@ void populateBuckets(int ***buckets, int tamBuckets, int *values, int count){
 		temp[id][0]++;
 		//Insere no bucket	
 		temp[id][temp[id][0]] = values[i];
-		
 		
 	}
 	*buckets= temp;
@@ -161,8 +156,6 @@ void printBuckets(int **buckets, int num, int bucketSize){
 
 void sort_p(int ***buckets, int id, int num){
 	int i, j, k, ** bucket = *buckets;
-	
-	
 	printf("id dele:%d\n",id);
 	printf("num %d\n",num);
 	for(i= 0; i< num; i++){
