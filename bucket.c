@@ -42,14 +42,13 @@ int main(int argc, char *argv[]){
 	createBuckets(&buckets, numBuckets, bucketSize);
 
 	int *values, count;
-	double start, end;
-	start = omp_get_wtime();
 	//Gera os valores randomicos para serem divididos nos buckets	
 	generateValues(&values, &count, argv[4]);
-	
 	//Popula os buckets pelo array gerado no método anterior, dividindo os valores entre os buckets
 	populateBuckets(&buckets, bucketSize , values, count);
 	
+	double start, end;
+	start = omp_get_wtime();
 	//Ordena
 	omp_set_num_threads(nthreads);
 	#pragma omp parallel
@@ -57,6 +56,7 @@ int main(int argc, char *argv[]){
 		int id = omp_get_thread_num();
 		sort_p(&buckets, id, numBuckets/nthreads);
 	}
+	end = omp_get_wtime();
 	//printBuckets(buckets, numBuckets, bucketSize);
 
 	//Junta nos values de novo
@@ -70,8 +70,7 @@ int main(int argc, char *argv[]){
 	free(buckets);
 	free(values);
 	
-	end = omp_get_wtime();
-	printf("Elapsed Time: %lf",end - start);
+	printf("Elapsed Time: %lf\n",end - start);
 	return 0;
 }
 
@@ -127,7 +126,7 @@ void populateBuckets(int ***buckets, int tamBuckets, int *values, int count){
 	for(i=0;i < count;i++){
 		//TODO: definir um jeito melhor de decidir qual bucket recebe qual numero
 		id = values[i] / tamBuckets;
-		printf("%d\n", id);
+		// printf("%d\n", id);
 		//printf("values %d\n",values[i]);
 		//printf("tamanho bucket %d\n",tamBuckets);
 		//printf("%d\n",id);
@@ -155,8 +154,6 @@ void printBuckets(int **buckets, int num, int bucketSize){
 
 void sort_p(int ***buckets, int id, int num){
 	int i, j, k, ** bucket = *buckets;
-	printf("id dele:%d\n",id);
-	printf("num %d\n",num);
 	for(i= 0; i< num; i++){
 		
 		int *tempB = (int*) bucket[(id*num)+i];
