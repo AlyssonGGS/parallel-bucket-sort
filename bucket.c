@@ -42,8 +42,8 @@ int main(int argc, char *argv[]){
 	createBuckets(&buckets, numBuckets, bucketSize);
 
 	int *values, count;
-	clock_t start, end;
-	start = clock();
+	double start, end;
+	start = omp_get_wtime();
 	//Gera os valores randomicos para serem divididos nos buckets	
 	generateValues(&values, &count, argv[4]);
 	
@@ -70,9 +70,8 @@ int main(int argc, char *argv[]){
 	free(buckets);
 	free(values);
 	
-	end = clock();
-	double cpu_time_used = ((double) (end - start)) / CLOCKS_PER_SEC;
-	printf("Elapsed Time: %lf",cpu_time_used);
+	end = omp_get_wtime();
+	printf("Elapsed Time: %lf",end - start);
 	return 0;
 }
 
